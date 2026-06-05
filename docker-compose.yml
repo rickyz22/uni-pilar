@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL — Single Database for All Services
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: unipilar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: unipilar
+      POSTGRES_USER: unipilar_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-unipilar_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unipilar_user -d unipilar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - unipilar-network
+
+  # ──────────────────────────────────────────────
+  # Authentication & User Microservice
+  # ──────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: unipilar-auth-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    env_file:
+      - ./services/auth/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./services/auth/src:/app/src
+    networks:
+      - unipilar-network
+
+  # ──────────────────────────────────────────────
+  # Academic Data Microservice
+  # ──────────────────────────────────────────────
+  academic-service:
+    build:
+      context: ./services/academic
+      dockerfile: Dockerfile
+    container_name: unipilar-academic-service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    env_file:
+      - ./services/academic/.env
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:4001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    volumes:
+      - ./services/academic/src:/app/src
+    networks:
+      - unipilar-network
+
+  # ──────────────────────────────────────────────
+  # Client — Frontend (Vanilla JS + PWA)
+  # ──────────────────────────────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: unipilar-client
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - REACT_APP_API_URL=http://localhost:4001
+    depends_on:
+      - auth-service
+      - academic-service
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    networks:
+      - unipilar-network
+
+volumes:
+  pg-data:
+
+networks:
+  unipilar-network:
+    driver: bridge
