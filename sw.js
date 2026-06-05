@@ -1,8 +1,8 @@
-const CACHE_NAME = 'unipilar-v2';
+const CACHE_NAME = 'unipilar-v3';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/assets/app.js',
+  './',
+  './index.html',
+  './assets/app.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
 ];
