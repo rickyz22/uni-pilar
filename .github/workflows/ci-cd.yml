@@ -54,6 +54,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install auth service dependencies
+        working-directory: ./services/auth
+        run: npm ci --only=production
+
+      - name: Install academic service dependencies
+        working-directory: ./services/academic
+        run: npm ci --only=production
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
